@@ -8,28 +8,28 @@ jobs:
   build-windows:
     runs-on: windows-latest
     env:
-      # 临时兼容Node20警告，避免强制切换导致异常
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-      - uses: actions/checkout@v4
+      - name: 拉取代码
+        uses: actions/checkout@v4
 
-      - name: Install .NET 8
+      - name: 安装.NET8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0'
 
-      # 还原依赖，不修改官方源（部分项目改镜像反而冲突）
-      - run: dotnet restore
+      # 全局还原整个解决方案依赖
+      - run: dotnet restore AllLive.sln
 
-      # 基础编译，只校验代码
-      - run: dotnet build -c Release --no-restore
+      # 仅编译WPF主项目AllLive
+      - run: dotnet build AllLive/AllLive.csproj -c Release --no-restore
 
-      # 打包便携程序
-      - run: dotnet publish -c Release -r win-x64 --self-contained true --no-build
+      # 只对主WPF程序打包独立运行包
+      - run: dotnet publish AllLive/AllLive.csproj -c Release -r win-x64 --self-contained true --no-build
 
-      # 上传打包文件夹
-      - name: Upload Build
+      # 上传主程序打包目录
+      - name: 上传成品
         uses: actions/upload-artifact@v4
         with:
           name: AllLive-Win-x64
-          path: bin/Release/net8.0-windows/win-x64/publish
+          path: AllLive/bin/Release/net8.0-windows/win-x64/publish
