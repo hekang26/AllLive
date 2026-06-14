@@ -1,43 +1,35 @@
 name: Build AllLive Windows
 on:
+  workflow_dispatch:
   push:
     branches: [ master ]
-  workflow_dispatch:
 
 jobs:
   build-windows:
     runs-on: windows-latest
+    env:
+      # 临时兼容Node20警告，避免强制切换导致异常
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET
+      - name: Install .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0
+          dotnet-version: '8.0'
 
-      # 切换国内NuGet源，解决国外源超时
-      - name: Switch NuGet mirror
-        run: |
-          dotnet nuget remove source nuget.org || true
-          dotnet nuget add source https://nuget.cdn.azure.cn/v3/index.json --name azure
-          dotnet nuget list source
+      # 还原依赖，不修改官方源（部分项目改镜像反而冲突）
+      - run: dotnet restore
 
-      # 不带参数先还原，最简命令
-      - name: Restore dependencies
-        run: dotnet restore
+      # 基础编译，只校验代码
+      - run: dotnet build -c Release --no-restore
 
-      # 先基础编译，不打包
-      - name: Build Release
-        run: dotnet build -c Release
+      # 打包便携程序
+      - run: dotnet publish -c Release -r win-x64 --self-contained true --no-build
 
-      # 打包独立程序
-      - name: Publish self-contained
-        run: dotnet publish -c Release --self-contained true -r win-x64
-
-      # 上传产物
-      - name: Upload artifact
+      # 上传打包文件夹
+      - name: Upload Build
         uses: actions/upload-artifact@v4
         with:
           name: AllLive-Win-x64
-          path: bin/Release/*/win-x64/publish
+          path: bin/Release/net8.0-windows/win-x64/publish
