@@ -2,41 +2,42 @@ name: Build AllLive Windows
 on:
   push:
     branches: [ master ]
-  workflow_dispatch: # 支持网页手动一键启动构建
+  workflow_dispatch:
 
 jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      # 拉取仓库源码
-      - name: 拉取仓库代码
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # 安装.NET 8编译环境
-      - name: 安装.NET 8 SDK
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0'
+          dotnet-version: 8.0
 
-      # 配置国内NuGet源，解决国外包拉取超时失败
-      - name: 配置国内NuGet镜像加速
-        run: dotnet nuget add source https://nuget.cdn.azure.cn/v3/index.json --name AzureChina --force
+      # 切换国内NuGet源，解决国外源超时
+      - name: Switch NuGet mirror
+        run: |
+          dotnet nuget remove source nuget.org || true
+          dotnet nuget add source https://nuget.cdn.azure.cn/v3/index.json --name azure
+          dotnet nuget list source
 
-      # 还原项目全部NuGet依赖
-      - name: 还原项目依赖
-        run: dotnet restore AllLive.sln
+      # 不带参数先还原，最简命令
+      - name: Restore dependencies
+        run: dotnet restore
 
-      # 预先编译校验代码是否存在语法错误
-      - name: 预编译校验Release
-        run: dotnet build AllLive.sln -c Release -p:Platform=x64
+      # 先基础编译，不打包
+      - name: Build Release
+        run: dotnet build -c Release
 
-      # 打包独立运行程序（自带.NET运行库，其他电脑无需装框架）
-      - name: Release完整打包
-        run: dotnet publish AllLive.sln -c Release -p:RuntimeIdentifier=win-x64 -p:Platform=x64 --self-contained true
+      # 打包独立程序
+      - name: Publish self-contained
+        run: dotnet publish -c Release --self-contained true -r win-x64
 
-      # 上传打包好的程序为可下载压缩包
-      - name: 上传编译成品包
+      # 上传产物
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: AllLive-Win-x64
-          path: '**/publish/**'
+          path: bin/Release/*/win-x64/publish
