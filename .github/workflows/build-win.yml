@@ -1,0 +1,29 @@
+name: Build AllLive Windows
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch: # 支持网页手动一键构建
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
+      - name: 安装.NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+
+      - name: 还原项目依赖
+        run: dotnet restore
+
+      - name: Release编译打包
+        run: dotnet publish -c Release --self-contained true -p:Platform=x64
+
+      - name: 上传编译成品包
+        uses: actions/upload-artifact@v4
+        with:
+          name: AllLive-Win-x64
+          path: bin/Release/net8.0-windows/x64/publish
