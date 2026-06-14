@@ -18,21 +18,15 @@ jobs:
         with:
           dotnet-version: '8.0'
 
-      # 全局还原全部项目依赖
+      # 还原整体解决方案
       - run: dotnet restore AllLive.sln
 
-      # 编译整个解决方案（所有项目正常编译，不绑定运行时）
+      # 完整编译所有项目，生成Release版exe（无独立运行时，框架冲突彻底消失）
       - run: dotnet build AllLive.sln -c Release --no-restore
 
-      # ----------------关键改动----------------
-      # 只打包WPF桌面主程序，不碰Console和Core类库
-      # 先自动找到主程序csproj，这里用通配匹配WPF主项目
-      - name: 仅打包桌面主程序
-        run: dotnet publish *.csproj -c Release --self-contained true --no-build
-
-      # 上传打包后的桌面程序
-      - name: 上传成品压缩包
+      # 全局匹配所有编译输出的程序文件夹上传
+      - name: 上传编译产物
         uses: actions/upload-artifact@v4
         with:
-          name: AllLive-Win-x64
-          path: '**/publish/**'
+          name: AllLive-Win-Build
+          path: '**/bin/Release/**'
