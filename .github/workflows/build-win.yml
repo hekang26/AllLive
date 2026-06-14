@@ -1,4 +1,4 @@
-name: Build AllLive Windows
+name: Build AllLive Console SelfContained
 on:
   workflow_dispatch:
   push:
@@ -10,23 +10,21 @@ jobs:
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-      - name: 拉取代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 安装.NET8
+      - name: Install .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0'
 
-      # 还原整体解决方案
-      - run: dotnet restore AllLive.sln
+      # 仅处理控制台项目
+      - run: dotnet restore AllLive.Console/AllLive.Console.csproj
+      - run: dotnet build AllLive.Console/AllLive.Console.csproj -c Release --no-restore
+      # 自包含打包，内置win-x64运行库
+      - run: dotnet publish AllLive.Console/AllLive.Console.csproj -c Release -r win-x64 --self-contained true --no-build
 
-      # 完整编译所有项目，生成Release版exe（无独立运行时，框架冲突彻底消失）
-      - run: dotnet build AllLive.sln -c Release --no-restore
-
-      # 全局匹配所有编译输出的程序文件夹上传
-      - name: 上传编译产物
+      - name: Upload Package
         uses: actions/upload-artifact@v4
         with:
-          name: AllLive-Win-Build
-          path: '**/bin/Release/**'
+          name: AllLive-Console-Win-Self
+          path: AllLive.Console/bin/Release/net8.0/win-x64/publish
