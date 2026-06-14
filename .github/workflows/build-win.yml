@@ -1,4 +1,4 @@
-name: Build AllLive Console SelfContained
+name: Build AllLive Console Only
 on:
   workflow_dispatch:
   push:
@@ -10,21 +10,29 @@ jobs:
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install .NET 8
+      - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0'
 
+      # 全局还原所有依赖（类库+控制台一起还原没问题）
       - run: dotnet restore AllLive.sln
-      # 整体编译解决方案
-      - run: dotnet build AllLive.sln -c Release --no-restore
-      # 发布时指定win-x64自包含，只会给可执行程序打包，类库自动适配
-      - run: dotnet publish AllLive.sln -c Release -r win-x64 --self-contained true --no-build
 
-      - name: Upload Package
+      # 全局编译所有项目（编译阶段不加运行时，不会冲突）
+      - run: dotnet build AllLive.sln -c Release --no-restore
+
+      # ----------------关键：只对控制台程序单独打包自包含----------------
+      - name: Publish Console App alone
+        run: |
+          cd AllLive.Console
+          dotnet publish AllLive.Console.csproj -c Release -r win-x64 --self-contained true --no-build
+
+      # 上传控制台打包目录
+      - name: Upload Self-contained Package
         uses: actions/upload-artifact@v4
         with:
-          name: AllLive-Console-Win-Self
+          name: AllLive-Console-Self-Win
           path: AllLive.Console/bin/Release/net8.0/win-x64/publish
